@@ -1,36 +1,49 @@
 import torch
-from transformers import MBartTokenizer, MBartForConditionalGeneration
+from transformers import T5ForConditionalGeneration, T5Tokenizer
 
 def get_summarization(text):
-    # Используем проверенную модель для русского языка
-    model_name = "IlyaGusev/mbart_ru_sum_gazeta"
+    # Модель Rut5-base (намного легче mBART)
+    model_name = "IlyaGusev/rut5_base_sum_gazeta"
     
-    # Загружаем токенизатор и саму модель
-    tokenizer = MBartTokenizer.from_pretrained(model_name)
-    model = MBartForConditionalGeneration.from_pretrained(model_name)
+    # Загружаем токенизатор и модель напрямую
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
 
-    # Токенизация входного текста (с ограничением длины)
-    input_ids = tokenizer(
-        [text],
-        max_length=1024,
-        padding="max_length",
-        truncation=True,
+    # Подготовка входного текста
+    # Для T5 важно добавить префикс (хотя для этой модели он опционален)
+    inputs = tokenizer(
+        [text], 
+        max_length=600, 
+        add_special_tokens=True, 
+        truncation=True, 
         return_tensors="pt"
-    )["input_ids"]
+    )
 
-    # Генерация текста (параметры для улучшения качества)
+    # Генерация
     output_ids = model.generate(
-        input_ids=input_ids,
-        no_repeat_ngram_size=4,
-        num_beams=5
+        input_ids=inputs["input_ids"],
+        attention_mask=inputs["attention_mask"],
+        num_beams=5,
+        max_length=200,
+        no_repeat_ngram_size=4
     )[0]
 
-    # Перевод из токенов в понятный текст
+    # Декодирование
     summary = tokenizer.decode(output_ids, skip_special_tokens=True)
     return summary
 
 if __name__ == "__main__":
-    # Тестовый пример
-    test_text = "Вставьте сюда любую длинную новость для проверки"
-    print("Результат суммаризации:")
-    print(get_summarization(test_text))
+    test_text = """
+    Сегодня в Москве прошла конференция по искусственному интеллекту. 
+    Специалисты обсуждали внедрение нейросетей в образовательный процесс. 
+    Особое внимание уделили МТУСИ, где запускается новая магистерская программа 
+    по проектированию интеллектуальных систем.
+    """
+    
+    print("--- Запуск модели T5 (Direct Load) ---")
+    try:
+        result = get_summarization(test_text)
+        print("\nРезультат суммаризации:")
+        print(result)
+    except Exception as e:
+        print(f"Критическая ошибка: {e}")
