@@ -1,0 +1,7 @@
+torch
+transformers
+sentencepiece
+fastapi
+uvicorn
+beautifulsoup4
+requests
