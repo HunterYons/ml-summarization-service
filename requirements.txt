@@ -1,9 +1,7 @@
-torch
-transformers
-sentencepiece
-protobuf
-tiktoken
-fastapi
-uvicorn
-beautifulsoup4
-requests
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.2+cpu
+transformers==4.36.2
+sentencepiece==0.1.99
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
