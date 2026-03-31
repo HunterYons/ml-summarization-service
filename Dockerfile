@@ -19,7 +19,7 @@ COPY . .
 
 # 5. Подготовка среды
 # Создаем файл логов, чтобы Docker мог в него писать
-RUN touch request_history.log && chmod 666 request_history.log
+RUN touch api_history.log && chmod 666 api_history.log
 
 # 6. Проброс порта для FastAPI
 EXPOSE 8000

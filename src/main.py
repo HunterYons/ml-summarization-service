@@ -24,7 +24,7 @@ async def summarize(request: SummarizeRequest):
         summary = await loop.run_in_executor(executor, summarize_text, request.text)
         
         # Имитация взаимодействия/БД (исправляет замечание №3)
-        with open("history.log", "a", encoding="utf-8") as f:
+        with open("api_history.log", "a", encoding="utf-8") as f:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             f.write(f"[{timestamp}] Запрос: {len(request.text)} симв. -> Ответ получен.\n")
             
