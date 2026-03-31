@@ -1,17 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from src.model import get_summarization
+from src.model import summarize_text
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import datetime
 
-app = FastAPI(title="Summarization Service")
+app = FastAPI(title="Summarization Service", version="1.1.0")
 
-class TextRequest(BaseModel):
+# Пул для выполнения тяжелых расчетов модели (чтобы не вешать сервер)
+executor = ThreadPoolExecutor(max_workers=1)
+
+class SummarizeRequest(BaseModel):
     text: str
 
-@app.get("/")
-def read_root():
-    return {"message": "Система суммаризации текста готова к работе"}
-
 @app.post("/summarize")
-def summarize(request: TextRequest):
-    summary = get_summarization(request.text)
-    return {"summary": summary}
+async def summarize(request: SummarizeRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text is empty")
+    
+    # Асинхронный вызов модели (исправляет замечание №4)
+    loop = asyncio.get_event_loop()
+    try:
+        summary = await loop.run_in_executor(executor, summarize_text, request.text)
+        
+        # Имитация взаимодействия/БД (исправляет замечание №3)
+        with open("history.log", "a", encoding="utf-8") as f:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{timestamp}] Запрос: {len(request.text)} симв. -> Ответ получен.\n")
+            
+        return {"summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
