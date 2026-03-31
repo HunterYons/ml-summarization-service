@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  # Основной сервис с нейронкой
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api_history.log:/app/api_history.log
+    restart: always
+
+  # Сервис телеграм-бота
+  bot:
+    build: .
+    command: python tg_bot.py
+    env_file:
+      - .env
+    depends_on:
+      - api
+    restart: always
