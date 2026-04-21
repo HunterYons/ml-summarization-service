@@ -1,16 +1,38 @@
 version: '3.8'
 
 services:
-  # Основной сервис с нейронкой
+  # База данных для хранения истории (Замечание №3)
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: summarization_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d summarization_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Система версионирования экспериментов (Требование ТЗ)
+  mlflow:
+    image: ghcr.io/mlflow/mlflow
+    ports:
+      - "5000:5000"
+    command: mlflow server --host 0.0.0.0
+
   api:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - ./api_history.log:/app/api_history.log
-    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
 
-  # Сервис телеграм-бота
   bot:
     build: .
     command: python tg_bot.py
@@ -18,4 +40,3 @@ services:
       - .env
     depends_on:
       - api
-    restart: always
