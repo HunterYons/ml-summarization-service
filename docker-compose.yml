@@ -23,9 +23,10 @@ services:
       - "5000:5000"
     environment:
       - MLFLOW_HTTP_HOST_ALLOWLIST=*
-    # Мы добавляем флаг --dev, чтобы убрать строгие проверки заголовков (только для разработки!)
-    command: mlflow server --host 0.0.0.0 --dev
-
+      # ЭТА СТРОКА — КЛЮЧЕВАЯ. Она отключает проверку безопасности для разработки
+      - MLFLOW_SERVER_GATEWAY_SECURITY_ENABLED=false 
+    command: mlflow server --host 0.0.0.0 --dev-server
+    
   api:
     build: .
     container_name: ml-summarization-service-api-1
