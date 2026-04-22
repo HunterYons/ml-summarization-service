@@ -1,50 +1,77 @@
 version: '3.8'
 
 services:
-  # База данных для хранения истории
   db:
     image: postgres:15-alpine
     container_name: ml-summarization-service-db-1
+    restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: summarization_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=summarization_db
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d summarization_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      default:
+        ipv4_address: 172.18.0.5
 
-# Система версионирования экспериментов
   mlflow:
     image: ghcr.io/mlflow/mlflow
     container_name: ml-summarization-service-mlflow-1
-    ports:
-      - "5000:5000"
+    restart: always
     environment:
       - MLFLOW_HTTP_HOST_ALLOWLIST=*
-      # ЭТА СТРОКА — КЛЮЧЕВАЯ. Она отключает проверку безопасности для разработки
-      - MLFLOW_SERVER_GATEWAY_SECURITY_ENABLED=false 
-    command: mlflow server --host 0.0.0.0 --dev-server
-    
-  api:
-    build: .
-    container_name: ml-summarization-service-api-1
+      - MLFLOW_SERVER_HOST_HEADER_VALIDATION=false
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "5000:5000"
+    networks:
+      default:
+        ipv4_address: 172.18.0.100
+    command: >
+      mlflow server 
+      --host 0.0.0.0 
+      --port 5000 
+      --backend-store-uri sqlite:///mlflow.db 
+      --default-artifact-root /app/artifacts
+      --dev
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ml-summarization-service-api-1
     depends_on:
       db:
         condition: service_healthy
-      mlflow:
-        condition: service_started
-
-  bot:
-    build: .
-    container_name: ml-summarization-service-bot-1
-    command: python tg_bot.py
     env_file:
       - .env
+    ports:
+      - "8000:8000"
+    networks:
+      default:
+        ipv4_address: 172.18.0.10
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ml-summarization-service-bot-1
     depends_on:
       - api
+    env_file:
+      - .env
+    networks:
+      default:
+        ipv4_address: 172.18.0.11
+    command: python src/tg_bot.py
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16

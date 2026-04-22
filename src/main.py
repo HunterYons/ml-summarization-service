@@ -10,7 +10,7 @@ app = FastAPI(title="Summarization Service Pro")
 executor = ThreadPoolExecutor(max_workers=1)
 
 # Настройка MLflow
-mlflow.set_tracking_uri("http://mlflow:5000")
+mlflow.set_tracking_uri("http://172.18.0.100:5000")
 mlflow.set_experiment("Summarization_Experiments")
 
 def get_db():
