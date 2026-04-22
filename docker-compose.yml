@@ -1,9 +1,10 @@
 version: '3.8'
 
 services:
-  # База данных для хранения истории (Замечание №3)
+  # База данных для хранения истории
   db:
     image: postgres:15-alpine
+    container_name: ml-summarization-service-db-1
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -14,15 +15,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # Система версионирования экспериментов (Требование ТЗ)
+  # Система версионирования экспериментов
   mlflow:
     image: ghcr.io/mlflow/mlflow
+    container_name: ml-summarization-service-mlflow-1
     ports:
       - "5000:5000"
+    # Добавляем переменную для обхода 403 ошибки (DNS Rebinding protection)
+    environment:
+      - MLFLOW_HTTP_HOST_ALLOWLIST=api,mlflow,localhost,127.0.0.1
     command: mlflow server --host 0.0.0.0
 
   api:
     build: .
+    container_name: ml-summarization-service-api-1
     ports:
       - "8000:8000"
     env_file:
@@ -35,6 +41,7 @@ services:
 
   bot:
     build: .
+    container_name: ml-summarization-service-bot-1
     command: python tg_bot.py
     env_file:
       - .env
