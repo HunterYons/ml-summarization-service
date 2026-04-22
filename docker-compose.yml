@@ -15,16 +15,16 @@ services:
       timeout: 5s
       retries: 5
 
-  # Система версионирования экспериментов
+# Система версионирования экспериментов
   mlflow:
     image: ghcr.io/mlflow/mlflow
     container_name: ml-summarization-service-mlflow-1
     ports:
       - "5000:5000"
-    # Добавляем переменную для обхода 403 ошибки (DNS Rebinding protection)
     environment:
-      - MLFLOW_HTTP_HOST_ALLOWLIST=api,mlflow,localhost,127.0.0.1
-    command: mlflow server --host 0.0.0.0
+      - MLFLOW_HTTP_HOST_ALLOWLIST=*
+    # Мы добавляем флаг --dev, чтобы убрать строгие проверки заголовков (только для разработки!)
+    command: mlflow server --host 0.0.0.0 --dev
 
   api:
     build: .
