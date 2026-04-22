@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-# Загружаем модель глобально (один раз при импорте)
+# Загружаем модель глобально
 model_name = "IlyaGusev/rut5_base_sum_gazeta"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)

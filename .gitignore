@@ -22,7 +22,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# --- Окружение (Virtual Environments) ---
+# Окружение
 .env
 .envrc
 .venv
@@ -30,13 +30,12 @@ env/
 venv/
 ENV/
 
-# --- Редактор и IDE ---
+# Редактор и IDE
 .vscode/
 .idea/
 .cursorignore
 .cursorindexingignore
 
-# --- Специфично для твоего проекта МТУСИ ---
 # Игнорируем логи, чтобы не засорять гит историей тестов
 *.log
 api_history.log

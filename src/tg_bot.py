@@ -5,10 +5,10 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from dotenv import load_dotenv
 
-# 1. Загружаем переменные из .env
+# Загружаем переменные из .env
 load_dotenv()
 
-# 2. Получаем токен и URL из окружения
+# Получаем токен и URL из окружения
 # Если в .env нет TG_TOKEN, программа выдаст понятную ошибку
 API_TOKEN = os.getenv("TG_TOKEN")
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000/summarize")

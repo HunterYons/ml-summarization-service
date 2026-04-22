@@ -31,16 +31,15 @@ async def summarize(text_data: dict, db: Session = Depends(get_db)):
         # Инференс
         summary = await loop.run_in_executor(executor, summarize_text, text)
         
-        # 1. Сохранение в БД (Исправляет замечание №3)
+        # Сохранение в БД
         history_entry = SummarizationHistory(input_text=text, summary_text=summary)
         db.add(history_entry)
         db.commit()
 
-        # 2. Логирование в MLflow (Требование ТЗ)
+        # Логирование в MLflow
         with mlflow.start_run(nested=True):
             mlflow.log_param("input_len", len(text))
             mlflow.log_param("output_len", len(summary))
-            # Здесь можно добавить логирование реальных метрик качества, если они считаются
         
         return {"summary": summary}
     except Exception as e:
