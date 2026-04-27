@@ -1,8 +1,11 @@
 import mlflow
 import asyncio
+import time
+import torch
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from concurrent.futures import ThreadPoolExecutor
+from sentence_transformers import SentenceTransformer, util
 
 # Импортируем обновленную функцию пакетной обработки
 from src.model import summarize_batch 
@@ -13,13 +16,18 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 app = FastAPI(
     title="Summarization Service Pro",
-    description="API с поддержкой пакетной обработки (Batch Processing).",
-    version="1.1.0"
+    description="API с поддержкой Batch Processing и семантических метрик.",
+    version="1.2.0"
 )
+
+# Загружаем модель для расчета семантического сходства (SBERT)
+# paraphrase-multilingual-MiniLM-L12-v2 — отличная быстрая модель с поддержкой русского языка
+print("--- Загрузка модели метрик (SBERT) ---")
+metric_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
 # Настройка MLflow
 mlflow.set_tracking_uri("http://172.18.0.100:5000")
-mlflow.set_experiment("Summarization_Experiments")
+mlflow.set_experiment("Summarization_With_Metrics")
 
 def get_db():
     db = SessionLocal()
@@ -30,16 +38,16 @@ def get_db():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "mode": "batch"}
+    return {"status": "healthy", "metrics_enabled": True}
 
 @app.post("/summarize", status_code=200)
 async def summarize(text_data: dict, db: Session = Depends(get_db)):
     """
-    Эндпоинт суммаризации. Поддерживает одиночный текст (str) и батчи (list).
+    Эндпоинт суммаризации. Рассчитывает Cosine Similarity вместо ROUGE.
     """
+    start_perf = time.perf_counter()
     input_value = text_data.get("text", "")
     
-    # Определяем, работаем мы с одиночным текстом или списком
     if isinstance(input_value, str):
         texts_to_process = [input_value]
     elif isinstance(input_value, list):
@@ -47,40 +55,56 @@ async def summarize(text_data: dict, db: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=400, detail="Поле 'text' должно быть строкой или списком строк")
 
-    # Валидация входных данных
     if not texts_to_process or (isinstance(texts_to_process[0], str) and not texts_to_process[0].strip()):
         raise HTTPException(status_code=400, detail="Текст для обработки пуст")
 
     loop = asyncio.get_event_loop()
     try:
-        # Запуск инференса в пуле потоков
+        # 1. Запуск инференса суммаризации
         summaries = await loop.run_in_executor(executor, summarize_batch, texts_to_process)
         
-        # Сохранение в базу (для простоты сохраняем первый результат из батча)
-        # Если это батч, помечаем это в базе
+        # 2. Расчет семантической метрики (Cosine Similarity)
+        # Мы переводим тексты в векторы и сравниваем их направление
+        emb_input = metric_model.encode(texts_to_process, convert_to_tensor=True)
+        emb_output = metric_model.encode(summaries, convert_to_tensor=True)
+        
+        # Считаем сходство между парами (оригинал-результат)
+        cos_sim = util.cos_sim(emb_input, emb_output)
+        # Берем диагональные элементы (сходство i-го входа с i-м выходом)
+        semantic_scores = torch.diag(cos_sim).tolist()
+        avg_score = sum(semantic_scores) / len(semantic_scores)
+
+        # 3. Инженерные метрики
+        end_perf = time.perf_counter()
+        latency = end_perf - start_perf
+
+        # Логирование в MLflow
+        with mlflow.start_run(nested=True):
+            mlflow.log_param("batch_size", len(texts_to_process))
+            mlflow.log_metric("semantic_similarity", avg_score)
+            mlflow.log_metric("latency_sec", latency)
+        
+        # Сохранение в базу
         log_input = texts_to_process[0] if len(texts_to_process) == 1 else f"Batch size: {len(texts_to_process)}"
-        log_output = summaries[0] if len(summaries) == 1 else "Batch summary complete"
+        log_output = summaries[0] if len(summaries) == 1 else "Batch complete"
         
         history_entry = SummarizationHistory(input_text=log_input, summary_text=log_output)
         db.add(history_entry)
         db.commit()
 
-        # Логирование в MLflow
-        with mlflow.start_run(nested=True):
-            mlflow.log_param("batch_size", len(texts_to_process))
-            mlflow.log_metric("is_success", 1.0)
-        
-        # Возвращаем результат в том же формате, в котором получили (строка или список)
         return {
             "summary": summaries[0] if isinstance(input_value, str) else summaries,
+            "metrics": {
+                "semantic_similarity": round(avg_score, 4),
+                "latency_sec": round(latency, 3)
+            },
             "meta": {
-                "batch_size": len(texts_to_process),
-                "is_batch": isinstance(input_value, list)
+                "batch_size": len(texts_to_process)
             }
         }
     except Exception as e:
-        print(f"Error during batch inference: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка при обработке нейросетью")
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при обработке")
 
 if __name__ == "__main__":
     import uvicorn
