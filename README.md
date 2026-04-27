@@ -47,19 +47,32 @@
    git clone [https://github.com/ваш-аккаунт/ml-summarization-service.git](https://github.com/ваш-аккаунт/ml-summarization-service.git)
    cd ml-summarization-service
 
-2. Создайте файл .env в корне проекта и добавьте ваши данные:
+2. Создайте файл .env в корне проекта и добавьте туда этот код с заменой на ваши данные:
+ ```bash
+    DB_USER=postgres
 
-    TG_TOKEN=ваш_токен_телеграм_бота
+    DB_PASSWORD=postgres
+
+    DB_NAME=summarization_db
+
+    DATABASE_URL=postgresql://postgres:postgres@db:5432/summarization_db
+
+    TG_TOKEN=ваш токен
+
     API_URL=http://api:8000/summarize
-    DATABASE_URL=postgresql://postgres:postgres@db:5432/mlflow
-    MLFLOW_TRACKING_URI=http://mlflow:5000
+
+    MLFLOW_TRACKING_URI=http://172.18.0.100:5000
+
+    GIT_PYTHON_REFRESH=quiet
+
+    HF_TOKEN=ваш токен
 
 3. Запустите проект:
 
     docker-compose up --build
     Дождитесь загрузки моделей (в логах api-1 появится сообщение: Application startup complete).
 
-### Использование
+#### Использование
     Telegram Bot: Найдите вашего бота в Telegram и отправьте любой текст длиннее 10 символов.
 
     Swagger API: Доступен по адресу http://localhost:8000/docs.
