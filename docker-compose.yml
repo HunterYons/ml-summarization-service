@@ -4,9 +4,9 @@ services:
     container_name: ml-summarization-service-db-1
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=summarization_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: summarization_db
     ports:
       - "5432:5432"
     healthcheck:
@@ -23,8 +23,8 @@ services:
     container_name: ml-summarization-service-mlflow-1
     restart: always
     environment:
-      - MLFLOW_HTTP_HOST_ALLOWLIST=*
-      - MLFLOW_SERVER_HOST_HEADER_VALIDATION=false
+      MLFLOW_HTTP_HOST_ALLOWLIST: "*"
+      MLFLOW_SERVER_HOST_HEADER_VALIDATION: "false"
     ports:
       - "5000:5000"
     networks:
@@ -36,7 +36,6 @@ services:
       --port 5000 
       --backend-store-uri postgresql://postgres:postgres@db:5432/summarization_db
       --default-artifact-root /app/artifacts
-      --dev
 
   api:
     build:
